@@ -70,8 +70,22 @@ lazy val kernel = sonatypeProject(id = "cio", base = file("kernel"))
     )
   )
 
+lazy val examples = Project(id = "cio-examples", base = file("examples"))
+  .dependsOn(kernel)
+  .settings(
+    name := "cio-examples",
+    version := v,
+    scalaVersion := `scala-2-12`,
+    crossScalaVersions := ScalaVersions,
+    scalacOptions += "-Ypartial-unification",
+    isSnapshot := snapshot,
+    skip in publish := true,
+    publish := {},
+    publishLocal := {}
+  )
+
 lazy val root = Project(id = "cio-root", base = file("."))
-  .aggregate(cluster, gc, kernel)
+  .aggregate(cluster, gc, kernel, examples)
   .settings(
     name := "cio-root",
     version := v,
