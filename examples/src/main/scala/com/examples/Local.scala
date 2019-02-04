@@ -1,13 +1,13 @@
 package com.examples
 
-import cats.effect.IO
+import cats.effect.{ExitCode, IO}
 import cio._
-import Interpreter.Implicits.local
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 
-object Local {
-  def main(args: Array[String]): Unit = {
+object Local extends CIOApp {
+  implicit val interpreter: Interpreter = Interpreter.Implicits.local
+
+  def main(args: List[String]): CIO[ExitCode] = {
     val a = CIO.pure(1)
     val b = CIO.delay(2 + 2)
     val c = CIO.raiseError[Int](new IllegalArgumentException).handleError { _ =>
@@ -25,6 +25,8 @@ object Local {
       e <- e
     } yield a + b + c + d + e
 
-    println(s"Result: ${Await.result(result.unsafeToFuture, Duration.Inf)}")
+    result.flatMap { result =>
+      putStrLn(s"Result: $result")
+    }.toExitCode
   }
 }

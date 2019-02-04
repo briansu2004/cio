@@ -9,7 +9,7 @@ object InternalCIOException {
   @inline def apply(msg: String, cause: Throwable): InternalCIOException = new InternalCIOException(msg, cause)
 }
 
-sealed abstract class CIO[@specialized(Specializable.BestOfBreed) +A] {
+sealed abstract class CIO[@specialized(Specializable.BestOfBreed) +A] extends Serializable {
   def map[B](f: A => B): CIO[B]
   def flatMap[B](f: A => CIO[B]): CIO[B]
   def handleError[B >: A](f: Throwable => B): CIO[B]
@@ -109,6 +109,9 @@ class CIOError[A](protected[cio] val e: Throwable) extends CIO[A] {
 }
 
 object CIO {
+  val unit: CIO[Unit]  = pure({})
+  val never: CIO[Unit] = liftIO(IO.never)
+
   @inline def pure[A](a: A): CIO[A] = new CIOPure[A](a)
 
   @inline def raiseError[A](e: Throwable): CIO[A] = new CIOError[A](e)

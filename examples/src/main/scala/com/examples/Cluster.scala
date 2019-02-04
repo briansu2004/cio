@@ -1,23 +1,23 @@
 package com.examples
-import cats.effect.IO
-import cio.{CIO, Interpreter}
-import io.atomix.core.Atomix
+
+import cats.effect.{ExitCode, IO}
 import cio.cluster_atomix.AtomixInterpreter
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.Duration
+import cio._
+import io.atomix.core.Atomix
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
-object Cluster {
-  def main(args: Array[String]): Unit = {
-    implicit val interpreter: Interpreter =
-      AtomixInterpreter(
-        Atomix
-          .builder()
-          .withMemberId("client1")
-          .withAddress("localhost:8070")
-          .build()
-      )
+object Cluster extends CIOApp {
+  implicit val interpreter: Interpreter =
+    AtomixInterpreter(
+      Atomix
+        .builder()
+        .withMemberId("client1")
+        .withAddress("localhost:8070")
+        .build()
+    )
 
+  def main(args: List[String]): CIO[ExitCode] = {
     val a = CIO.pure(1)
     val b = CIO.delay(2 + 2)
     val c = CIO.raiseError[Int](new IllegalArgumentException).handleError { _ =>
@@ -35,6 +35,8 @@ object Cluster {
       e <- e
     } yield a + b + c + d + e
 
-    println(s"Result: ${Await.result(result.unsafeToFuture, Duration.Inf)}")
+    result.flatMap { result =>
+      putStrLn(s"Result: $result")
+    }.toExitCode
   }
 }
