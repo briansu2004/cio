@@ -1,13 +1,23 @@
 package com.examples
-
 import cats.effect.IO
-import cio._
-import Interpreter.Implicits.local
-import scala.concurrent.duration.Duration
+import cio.{CIO, Interpreter}
+import io.atomix.core.Atomix
+import cio.cluster_atomix.AtomixInterpreter
 import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.Duration
+import scala.concurrent.ExecutionContext.Implicits.global
 
-object Local {
+object Cluster {
   def main(args: Array[String]): Unit = {
+    implicit val interpreter: Interpreter =
+      AtomixInterpreter(
+        Atomix
+          .builder()
+          .withMemberId("client1")
+          .withAddress("localhost:8070")
+          .build()
+      )
+
     val a = CIO.pure(1)
     val b = CIO.delay(2 + 2)
     val c = CIO.raiseError[Int](new IllegalArgumentException).handleError { _ =>

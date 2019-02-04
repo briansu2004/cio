@@ -44,34 +44,24 @@ def sonatypeProject(id: String, base: File) =
       libraryDependencies ++= commonDeps
     )
 
-lazy val cluster = sonatypeProject(id = "cio-cluster", base = file("cluster"))
+lazy val kernel = sonatypeProject(id = "cio", base = file("kernel"))
   .settings(
     libraryDependencies ++= Seq(
-      K8s.skuber,
-      Atomix.kernel,
-      Atomix.raft
+      Typelevel.catsEffect
     )
   )
-
-lazy val gc = sonatypeProject(id = "cio-gc", base = file("gc"))
+lazy val cio_atomix = sonatypeProject(id = "cio-atomix", base = file("atomix"))
+  .dependsOn(kernel)
   .settings(
     libraryDependencies ++= Seq(
-      )
-  )
-
-lazy val kernel = sonatypeProject(id = "cio", base = file("kernel"))
-  .dependsOn(cluster, gc)
-  .settings(
-    libraryDependencies ++= Seq(
-      GRPC.nettyShaded,
-      GRPC.protobuf,
-      GRPC.stub,
-      Typelevel.catsEffect
+      Atomix.kernel,
+      Atomix.raft,
+      ScalaCompat.java8compat
     )
   )
 
 lazy val examples = Project(id = "cio-examples", base = file("examples"))
-  .dependsOn(kernel)
+  .dependsOn(kernel, cio_atomix)
   .settings(
     name := "cio-examples",
     version := v,
@@ -81,11 +71,17 @@ lazy val examples = Project(id = "cio-examples", base = file("examples"))
     isSnapshot := snapshot,
     skip in publish := true,
     publish := {},
-    publishLocal := {}
+    publishLocal := {},
+    libraryDependencies ++= {
+      val logbackVersion = "1.1.3"
+      Seq(
+        "ch.qos.logback" % "logback-classic" % logbackVersion
+      )
+    }
   )
 
 lazy val root = Project(id = "cio-root", base = file("."))
-  .aggregate(cluster, gc, kernel, examples)
+  .aggregate(kernel, cio_atomix, examples)
   .settings(
     name := "cio-root",
     version := v,

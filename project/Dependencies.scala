@@ -23,12 +23,6 @@ object Dependencies {
     val skuber = "io.skuber" %% "skuber" % skuberV
   }
 
-  object GRPC {
-    val nettyShaded = "io.grpc" % "grpc-netty-shaded" % grpcV
-    val protobuf    = "io.grpc" % "grpc-protobuf"     % grpcV
-    val stub        = "io.grpc" % "grpc-stub"         % grpcV
-  }
-
   object Atomix {
     val kernel = "io.atomix" % "atomix"      % atomixV
     val raft   = "io.atomix" % "atomix-raft" % atomixV
