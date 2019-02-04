@@ -1,7 +1,9 @@
 package cio
 
 import cats.effect.IO
+
 import scala.concurrent.Future
+import scala.util.Try
 
 class InternalCIOException private (msg: String, cause: Throwable) extends Exception(msg, cause)
 object InternalCIOException {
@@ -106,6 +108,13 @@ class CIOError[A](protected[cio] val e: Throwable) extends CIO[A] {
   @inline def flatMap[B](f: A => CIO[B]): CIO[B]                      = this.asInstanceOf[CIOError[B]]
   @inline def handleError[B >: A](f: Throwable => B): CIO[B]          = new CIODelay[B](() => f(e))
   @inline def handleErrorWith[B >: A](f: Throwable => CIO[B]): CIO[B] = f(e)
+}
+
+class CIOMemoized[A](protected[cio] val value: Try[A]) extends CIO[A] {
+  @inline def map[B](f: A => B): CIO[B]                               = new CIODelay[B](() => value.map(f).get)
+  @inline def flatMap[B](f: A => CIO[B]): CIO[B]                      = new CIOBind[A, B](this, f)
+  @inline def handleError[B >: A](f: Throwable => B): CIO[B]          = new CIODelay[B](() => value.recover[B] { case e: Throwable => f(e) }.get)
+  @inline def handleErrorWith[B >: A](f: Throwable => CIO[B]): CIO[B] = new CIOHandleErrorWith[B](this, f)
 }
 
 object CIO {

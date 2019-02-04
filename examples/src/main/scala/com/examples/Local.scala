@@ -9,8 +9,15 @@ object Local extends CIOApp {
 
   def main(args: List[String]): CIO[ExitCode] = {
     val a = CIO.pure(1)
-    val b = CIO.delay(2 + 2)
+    val b = CIO
+      .delay {
+        println(s"You will see me once")
+        2 + 2
+      }
+      .memoize()
+
     val c = CIO.raiseError[Int](new IllegalArgumentException).handleError { _ =>
+      println(s"You will se me twice")
       -1
     }
 
@@ -23,10 +30,15 @@ object Local extends CIOApp {
       c <- c
       d <- d
       e <- e
-    } yield a + b + c + d + e
+      result = a + b + c + d + e
+      _ <- putStrLn(s"Result: $result")
+    } yield ()
 
-    result.flatMap { result =>
-      putStrLn(s"Result: $result")
-    }.toExitCode
+    val program = for {
+      _ <- result
+      _ <- result
+    } yield ()
+
+    program.toExitCode
   }
 }

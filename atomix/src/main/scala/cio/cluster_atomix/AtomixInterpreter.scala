@@ -15,10 +15,11 @@ import cio._
 
 case class ComputationId(uuid: UUID) extends AnyVal
 
-class AtomixInterpreter private (atomix: Atomix)(implicit ec: ExecutionContext) extends Interpreter {
+class AtomixInterpreter private (protected val atomix: Atomix)(implicit protected val ec: ExecutionContext) extends Interpreter with AtomixGC {
   atomix.start().join()
+  startGC()
 
-  private val values: AsyncDistributedMap[ComputationId, Try[_]] =
+  protected val values: AsyncDistributedMap[ComputationId, Try[_]] =
     atomix
       .mapBuilder(s"cio-values")
       .withNullValues(false)
@@ -26,12 +27,12 @@ class AtomixInterpreter private (atomix: Atomix)(implicit ec: ExecutionContext) 
       .build()
       .async()
 
-  def fetch[A](computationId: ComputationId): Future[A] =
+  protected def fetch[A](computationId: ComputationId): Future[A] =
     values.get(computationId).toScala flatMap { v =>
       Future.fromTry(v).asInstanceOf[Future[A]]
     }
 
-  def fetchIO[A](computationId: ComputationId): IO[A] = IO.fromFuture(IO(fetch(computationId)))
+  protected def fetchIO[A](computationId: ComputationId): IO[A] = IO.fromFuture(IO(fetch(computationId)))
 
   protected def addValue[A](v: () => Try[A]): ComputationId = {
     val computationId = ComputationId(UUID.randomUUID())
@@ -74,6 +75,12 @@ class AtomixInterpreter private (atomix: Atomix)(implicit ec: ExecutionContext) 
 
     case x: cio.CIOError[A] =>
       fetchIO[A](addValue(() => Failure(x.e)))
+
+    case x: cio.CIOMemoized[A] =>
+      IO.fromEither(x.value match {
+        case Failure(e) => Left(e)
+        case Success(v) => Right(v)
+      })
   }
 }
 
